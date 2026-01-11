@@ -95,3 +95,17 @@ curl -X POST "http://localhost:8000/extract" \
 
 The resolver is conservative: it prefers leaving deeper levels empty rather than
 forcing an incorrect best-guess.
+
+## Example Test
+
+### Screenshots
+
+#### 1) Subdistrict First
+![Subdistrict First](docs/images/subdistrict-first.png)
+
+#### 2) Province First
+![Province First](docs/images/province-first.png)
+
+#### 3) Complex text example
+![Complex text](docs/images/complex.png)
+

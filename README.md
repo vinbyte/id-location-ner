@@ -45,6 +45,12 @@ python3 -m pip install -U pip
 python3 -m pip install -e .
 ```
 
+### Install from GitHub
+If you want to use it immediately without a PyPI release:
+```bash
+python3 -m pip install "git+https://github.com/vinbyte/id-location-ner.git"
+```
+
 ### Optional: HuggingFace NER support
 ```bash
 python3 -m pip install -e ".[hf]"

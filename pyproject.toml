@@ -3,17 +3,21 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "location-ner"
+name = "id-location-ner"
 version = "0.1.0"
 description = "Indonesian location extractor (gazetteer + optional NER)"
 readme = "README.md"
-# spaCy currently does not ship wheels for Python 3.13 yet.
 requires-python = ">=3.10"
 authors = [{ name = "Gavinda Kinandana" }]
 dependencies = [
   "spacy>=3.7,<4",
   "rapidfuzz>=3.6,<4",
 ]
+
+[project.urls]
+Homepage = "https://github.com/vinbyte/id-location-ner"
+Repository = "https://github.com/vinbyte/id-location-ner"
+Issues = "https://github.com/vinbyte/id-location-ner/issues"
 
 [project.optional-dependencies]
 hf = [
@@ -22,7 +26,10 @@ hf = [
 ]
 
 [project.scripts]
+# Keep the original CLI name for convenience.
 location-ner = "location_ner.cli:cli"
+# Also expose a repo-aligned CLI name.
+id-location-ner = "location_ner.cli:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -24,6 +24,7 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+Screenshot*.png
 
 # Environment variables / secrets
 .env

@@ -7,7 +7,7 @@ name = "id-location-ner"
 version = "0.1.0"
 description = "Indonesian location extractor (gazetteer + optional NER)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 authors = [{ name = "Gavinda Kinandana" }]
 dependencies = [
   "spacy>=3.7,<4",

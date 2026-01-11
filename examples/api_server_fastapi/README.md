@@ -15,32 +15,25 @@ and reuses them for all requests.
 From `examples/api_server_fastapi/`:
 
 ```bash
-# IMPORTANT: use Python 3.10–3.12. spaCy does not support Python 3.13 yet.
+# IMPORTANT: use Python 3.10+
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -U pip
 ```
 
-If you don't have `python3.12`, use `python3.11` (or any Python in 3.10–3.12).
-
 ### 2) Install dependencies
 
-Important: `location-ner` is the *repo root* project, not the `examples/` folder.
+From `examples/api_server_fastapi/`:
 
-Since this folder is an example, you still need to install the main library
-project from the repo root.
-
-If your current working directory is `examples/api_server_fastapi/`:
 ```bash
-python3 -m pip install -e "../..[hf]"
 python3 -m pip install -r requirements.txt
 
 # Quick sanity check
-python -c "import location_ner; print(location_ner.__version__ if hasattr(location_ner,'__version__') else 'ok')"
+python3 -c "import location_ner; print('ok')"
 ```
 
-(If you prefer running from the repo root instead, install with `pip install -e ".[hf]"`
-then `pip install -r examples/api_server_fastapi/requirements.txt`.)
+This installs `id-location-ner` from PyPI (with the `[hf]` extra enabled) plus
+FastAPI/Uvicorn.
 
 ### 3) Configure environment
 

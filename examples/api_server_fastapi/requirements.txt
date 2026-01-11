@@ -1,2 +1,3 @@
 fastapi>=0.110
 uvicorn[standard]>=0.27
+id-location-ner[hf]>=0.1.0

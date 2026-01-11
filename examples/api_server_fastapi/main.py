@@ -43,8 +43,8 @@ Optional environment variables
 Run (example)
 -------------
 1) Install dependencies:
-   pip install -e ".[hf]"
-   pip install -r examples/api_server_fastapi/requirements.txt
+   # From examples/api_server_fastapi/
+   python3 -m pip install -r requirements.txt
 
 2) Export env:
    export LOCATION_NER_CSV="/abs/path/to/location_kemendagri_2025.csv"

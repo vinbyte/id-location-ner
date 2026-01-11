@@ -26,6 +26,7 @@ Trade-off: recall depends on how complete your location list is and how many spe
 
 ## Dataset format
 Example CSV: `gazetteer/csv/location_kemendagri_2025.csv`
+This location is collected from : https://github.com/cahyadsn/wilayah (thanks bro)
 
 Required columns:
 - `province_name`, `province_code`

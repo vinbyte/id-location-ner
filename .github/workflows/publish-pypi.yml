@@ -33,6 +33,9 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
+    # Optional but recommended: tie publishing to a GitHub Environment.
+    # Configure the same environment name in PyPI's Trusted Publisher settings.
+    environment: pypi
     permissions:
       id-token: write
     steps:

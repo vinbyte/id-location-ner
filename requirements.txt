@@ -1,0 +1,2 @@
+spacy>=3.7,<4
+rapidfuzz>=3.6,<4

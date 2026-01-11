@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "location-ner"
+version = "0.1.0"
+description = "Indonesian location extractor (gazetteer + optional NER)"
+readme = "README.md"
+# spaCy currently does not ship wheels for Python 3.13 yet.
+requires-python = ">=3.10"
+authors = [{ name = "Gavinda Kinandana" }]
+dependencies = [
+  "spacy>=3.7,<4",
+  "rapidfuzz>=3.6,<4",
+]
+
+[project.optional-dependencies]
+hf = [
+  "transformers>=4.36",
+  "torch>=2.0",
+]
+
+[project.scripts]
+location-ner = "location_ner.cli:cli"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

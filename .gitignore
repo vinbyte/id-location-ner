@@ -1,0 +1,38 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python bytecode / caches
+**/__pycache__/
+*.py[cod]
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / typecheck / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
+
+# Environment variables / secrets
+.env
+
+# Data / outputs (adjust to your needs)
+# NOTE: This ignores all JSON files. If you need JSON configs/artifacts committed,
+# narrow this pattern (e.g., ignore only outputs/*.json).
+*.json
+
+# Optional: if you configure HuggingFace cache inside the repo, ignore it
+# (by default HF caches live in ~/.cache and won't be committed).
+.hf_cache/

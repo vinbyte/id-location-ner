@@ -6,8 +6,9 @@ This is a minimal FastAPI server example for the `location-ner` library.
 - Request JSON: `{"text": "..."}`
 - Response JSON: `{"text": "...", "final_result": {...}}`
 
-The server loads the gazetteer CSV + HuggingFace NER model **once at startup**
-and reuses them for all requests.
+By default, the server loads the gazetteer CSV **once at startup** and reuses it for all requests.
+
+Optionally, if `LOCATION_NER_HF_MODEL` is set, it also loads the HuggingFace NER model once and enables NER-gated extraction.
 
 ## Setup
 
@@ -32,8 +33,13 @@ python3 -m pip install -r requirements.txt
 python3 -c "import location_ner; print('ok')"
 ```
 
-This installs `id-location-ner` from PyPI (with the `[hf]` extra enabled) plus
-FastAPI/Uvicorn.
+This installs `id-location-ner` from PyPI plus FastAPI/Uvicorn.
+
+To enable HF/NER-assisted mode, install the optional extra:
+
+```bash
+python3 -m pip install "id-location-ner[hf]"
+```
 
 ### 3) Configure environment
 
@@ -49,15 +55,19 @@ Then set at least:
 Optional:
 - `LOCATION_NER_API_HOST` (default: `0.0.0.0`)
 - `LOCATION_NER_API_PORT` (default: `8000`)
-- `LOCATION_NER_HF_MODEL` (default: `cahya/bert-base-indonesian-NER`)
 - `LOCATION_NER_FUZZY_THRESHOLD` (default: `90`)
-- `LOCATION_NER_NER_FILTER_MIN_SCORE` (default: `0.5`)
+
+Optional (HF/NER-assisted mode):
+- `LOCATION_NER_HF_MODEL` (enables HF mode when set)
+- `LOCATION_NER_NER_FILTER_MIN_SCORE` (default: `0.5`, only used when HF mode is enabled)
 
 Notes:
 - `.env` is ignored by git.
 - If you want to load a different env file, set `LOCATION_NER_ENV_FILE=/path/to/file.env`.
 
 ## Run
+
+HF mode note: if you set `LOCATION_NER_HF_MODEL`, also install `id-location-ner[hf]`.
 
 ### Option A (recommended): run via env-configured wrapper
 This reads `LOCATION_NER_API_HOST` and `LOCATION_NER_API_PORT` from your `.env`.

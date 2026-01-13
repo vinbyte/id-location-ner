@@ -3,11 +3,15 @@
 Goals
 -----
 - Minimal API response: {"text": ..., "final_result": ...}
-- Load gazetteer + HF model once at startup (do NOT reload per request)
-- Default behavior:
-  - HF model always ON
-  - NER-gated gazetteer matching ON
+- Load gazetteer once at startup (do NOT reload per request)
+- Optional: load HF model once at startup when enabled
+- Default behavior (when `LOCATION_NER_HF_MODEL` is NOT set):
+  - Gazetteer matching ON
   - Fuzzy matching ON
+- When `LOCATION_NER_HF_MODEL` is set:
+  - HF NER ON
+  - NER-gated gazetteer matching ON
+  - HF-assisted heuristics ON
 
 Endpoint
 --------
@@ -36,9 +40,16 @@ Required environment variables
 
 Optional environment variables
 ------------------------------
-- LOCATION_NER_HF_MODEL (default: cahya/bert-base-indonesian-NER)
 - LOCATION_NER_FUZZY_THRESHOLD (default: 90)
+
+HF/NER-assisted mode (optional)
+------------------------------
+If you set `LOCATION_NER_HF_MODEL`, the server enables HuggingFace NER + NER-gated matching.
+
+- LOCATION_NER_HF_MODEL
+    HuggingFace model name (e.g. cahya/bert-base-indonesian-NER)
 - LOCATION_NER_NER_FILTER_MIN_SCORE (default: 0.5)
+    Minimum NER entity score used as a gating span.
 
 Run (example)
 -------------
@@ -182,22 +193,34 @@ STATE = _AppState()
 async def lifespan(app: FastAPI):
     """Initialize heavy resources once and reuse them."""
     csv_path = _get_env_required("LOCATION_NER_CSV")
-    hf_model = os.getenv(
-        "LOCATION_NER_HF_MODEL", "cahya/bert-base-indonesian-NER"
-    ).strip()
 
     fuzzy_threshold = _get_env_float("LOCATION_NER_FUZZY_THRESHOLD", 90.0)
-    ner_filter_min_score = _get_env_float("LOCATION_NER_NER_FILTER_MIN_SCORE", 0.5)
 
-    if not (0.0 <= ner_filter_min_score <= 1.0):
-        raise RuntimeError("LOCATION_NER_NER_FILTER_MIN_SCORE must be in range [0, 1]")
+    hf_model_raw = os.getenv("LOCATION_NER_HF_MODEL")
+    hf_model = hf_model_raw.strip() if hf_model_raw is not None else ""
+    hf_enabled = bool(hf_model)
+
+    ner_filter_min_score = 0.5
+    hf_ner: HuggingFaceNer | None = None
+
+    if hf_enabled:
+        ner_filter_min_score = _get_env_float("LOCATION_NER_NER_FILTER_MIN_SCORE", 0.5)
+        if not (0.0 <= ner_filter_min_score <= 1.0):
+            raise RuntimeError(
+                "LOCATION_NER_NER_FILTER_MIN_SCORE must be in range [0, 1]"
+            )
 
     # Load gazetteer + build matcher.
     extractor = LocationExtractor.from_csv(csv_path)
 
-    # Load HuggingFace model pipeline.
-    # This is the most expensive step; keep it global.
-    hf_ner = HuggingFaceNer(hf_model)
+    # Load HuggingFace model pipeline only when enabled.
+    if hf_enabled:
+        try:
+            hf_ner = HuggingFaceNer(hf_model)
+        except ModuleNotFoundError as e:
+            raise RuntimeError(
+                "HuggingFace mode requires extra deps. Install with: pip install 'id-location-ner[hf]'"
+            ) from e
 
     STATE.extractor = extractor
     STATE.hf_ner = hf_ner
@@ -213,21 +236,34 @@ app = FastAPI(title="Location NER API", version="0.1.0", lifespan=lifespan)
 @app.post("/extract", response_model=ExtractResponse)
 def extract_locations(req: ExtractRequest) -> ExtractResponse:
     """Extract a single best administrative path from input text."""
-    if STATE.extractor is None or STATE.hf_ner is None:
+    if STATE.extractor is None:
         raise HTTPException(status_code=503, detail="Server is still starting up")
 
     text = req.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="text must be non-empty")
 
-    # 1) Run HF NER once.
+    # Default: gazetteer-only, like `make smoke`.
+    if STATE.hf_ner is None:
+        mentions = STATE.extractor.extract(
+            text,
+            fuzzy=True,
+            fuzzy_threshold=STATE.fuzzy_threshold,
+            allowed_char_ranges=None,
+        )
+        gazetteer_mentions = [asdict(m) for m in mentions]
+        resolved = resolve_best_location(gazetteer_mentions)
+        return ExtractResponse(
+            text=text,
+            final_result=resolved.to_dict() if resolved is not None else None,
+        )
+
+    # HF/NER-assisted mode.
     hf_locations = STATE.hf_ner.extract_locations(text)
 
-    # 2) Build NER spans and use them as an allowlist for exact gazetteer matches.
     ner_spans = build_ner_spans(hf_locations, min_score=STATE.ner_filter_min_score)
     allowed_char_ranges = [(s.start_char, s.end_char) for s in ner_spans]
 
-    # 3) Gazetteer extraction (exact + fuzzy) with NER gating.
     mentions = STATE.extractor.extract(
         text,
         fuzzy=True,
@@ -235,7 +271,6 @@ def extract_locations(req: ExtractRequest) -> ExtractResponse:
         allowed_char_ranges=allowed_char_ranges,
     )
 
-    # 4) HF-assisted recovery: try to find subdistrict immediately before "Kecamatan".
     added = add_subdistrict_before_kecamatan(
         text,
         gazetteer=STATE.extractor.gazetteer,
@@ -247,7 +282,6 @@ def extract_locations(req: ExtractRequest) -> ExtractResponse:
         mentions.extend(added)
         mentions.sort(key=lambda m: (m.start_char, m.end_char))
 
-    # 5) Resolve final result.
     gazetteer_mentions = [asdict(m) for m in mentions]
     resolved = resolve_best_location(gazetteer_mentions)
 

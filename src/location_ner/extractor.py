@@ -455,11 +455,11 @@ def _infer_level_hint_from_left_context(text: str, start_char: int) -> str | Non
 def _is_obvious_non_location(text: str, start_char: int, end_char: int) -> bool:
     """Heuristics to reduce common false positives.
 
-    With a national gazetteer, many very short tokens become "valid" locations
-    somewhere in Indonesia (e.g., "Raya", "Sudah"). In address-like text, those
-    tokens often appear as generic words (street names, verbs).
+    With a national gazetteer, many spans can be valid administrative names in
+    *some* region, but in free-form text they may appear as part of other
+    constructs (most commonly: street names).
 
-    We keep this conservative: only block extremely common patterns.
+    We keep this conservative and pattern-based (no hand-maintained stopwords).
 
     Args:
         text: Full original text.
@@ -469,19 +469,13 @@ def _is_obvious_non_location(text: str, start_char: int, end_char: int) -> bool:
     Returns:
         True if the match is almost certainly not an administrative location.
     """
-    matched = text[start_char:end_char]
-    lowered = matched.strip().lower()
-
-    # "Jl. Raya" is a very common street pattern; "Raya" should not be treated as a district.
-    if lowered == "raya":
-        left_ctx = text[max(0, start_char - 10) : start_char].lower()
-        if "jl" in left_ctx or "jalan" in left_ctx:
-            return True
-
-    # In running text, "sudah" is almost always a verb, not a kelurahan.
-    if lowered == "sudah":
+    # Common address pattern: a token immediately after "Jl"/"Jalan" is very
+    # often a street name, not an administrative unit.
+    left_ctx = text[max(0, start_char - 20) : start_char].lower()
+    if re.search(r"\b(jl\.?|jalan)\s*$", left_ctx):
         return True
 
+    _ = text[start_char:end_char]  # kept for future heuristics
     return False
 
 

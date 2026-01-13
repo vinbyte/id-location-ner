@@ -128,6 +128,7 @@ def _score_path(path: dict[str, Any], mentions: list[dict[str, Any]]) -> float:
     candidates for that mention.
     """
     score = 0.0
+    supported_mentions = 0
 
     for m in mentions:
         candidates = [c for c in (m.get("candidates") or []) if isinstance(c, dict)]
@@ -165,7 +166,14 @@ def _score_path(path: dict[str, Any], mentions: list[dict[str, Any]]) -> float:
             evidence = mention_weight * (level_weight + method_bonus + fuzzy_bonus)
             best_for_mention = max(best_for_mention, evidence)
 
+        if best_for_mention > 0.0:
+            supported_mentions += 1
+
         score += best_for_mention
+
+    # Prefer paths supported by multiple mentions. This helps avoid "single-word"
+    # traps where a common token happens to be a valid subdistrict somewhere.
+    score += 0.75 * max(0, supported_mentions - 1)
 
     # Small preference for specificity (does not override evidence).
     score += 0.1 * _specificity_rank(path)
@@ -318,6 +326,121 @@ def _narrow_by_resolved_prefix(
         out.append(c)
 
     return out
+
+
+_LEVEL_PRIORITY = {"province": 0, "city": 1, "district": 2, "subdistrict": 3}
+
+
+def prune_mentions_to_resolved(
+    mentions: list[dict[str, Any]],
+    resolved: ResolvedLocation | None,
+) -> list[dict[str, Any]]:
+    """Keep only mentions consistent with the chosen best path.
+
+    Motivation:
+    - With a national gazetteer, many common words are valid locations somewhere.
+    - For typical address-like text, downstream users usually want the *single*
+      best administrative path and the mentions that support it.
+
+    This function:
+    - Filters each mention's candidates to those compatible with `resolved`.
+    - Drops mentions that have no remaining candidates.
+    - Recomputes mention `level` from the remaining candidates.
+
+    Args:
+        mentions: Extracted mentions in CLI-compatible dict format.
+        resolved: Output of `resolve_best_location`.
+
+    Returns:
+        A pruned list of mentions.
+    """
+    if resolved is None:
+        return mentions
+
+    out: list[dict[str, Any]] = []
+
+    for m in mentions:
+        candidates = [c for c in (m.get("candidates") or []) if isinstance(c, dict)]
+        if not candidates:
+            continue
+
+        narrowed = _narrow_candidate_dicts_to_resolved(resolved, candidates)
+        if not narrowed:
+            continue
+
+        new_m = dict(m)
+        new_m["candidates"] = narrowed
+
+        best_level = _pick_best_level_from_candidate_dicts(narrowed)
+        if best_level is not None:
+            new_m["level"] = best_level
+
+        out.append(new_m)
+
+    return out
+
+
+def _narrow_candidate_dicts_to_resolved(
+    resolved: ResolvedLocation,
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Filter candidates to those that match the resolved codes.
+
+    We only apply constraints that are present on the resolved path.
+    """
+    out: list[dict[str, Any]] = []
+    for c in candidates:
+        province_code = _as_str_or_none(c.get("province_code"))
+        city_code = _as_str_or_none(c.get("city_code"))
+        district_code = _as_str_or_none(c.get("district_code"))
+        subdistrict_code = _as_str_or_none(c.get("subdistrict_code"))
+
+        if (
+            resolved.province_code is not None
+            and province_code is not None
+            and province_code != resolved.province_code
+        ):
+            continue
+        if (
+            resolved.city_code is not None
+            and city_code is not None
+            and city_code != resolved.city_code
+        ):
+            continue
+        if (
+            resolved.district_code is not None
+            and district_code is not None
+            and district_code != resolved.district_code
+        ):
+            continue
+        if (
+            resolved.subdistrict_code is not None
+            and subdistrict_code is not None
+            and subdistrict_code != resolved.subdistrict_code
+        ):
+            continue
+
+        out.append(c)
+
+    return out
+
+
+def _pick_best_level_from_candidate_dicts(
+    candidates: list[dict[str, Any]],
+) -> str | None:
+    best: str | None = None
+    best_rank = -1
+
+    for c in candidates:
+        level = _as_str_or_none(c.get("level"))
+        if level is None:
+            continue
+        rank = _LEVEL_PRIORITY.get(level, -1)
+        if rank > best_rank:
+            best = level
+            best_rank = rank
+
+    return best
 
 
 def _as_str_or_none(v: Any) -> str | None:

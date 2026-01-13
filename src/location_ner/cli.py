@@ -164,13 +164,14 @@ def main(argv: list[str] | None = None) -> int:
     gazetteer_mentions = [m.__dict__ for m in mentions]
 
     # Resolve a single best administrative path for API-friendly output.
-    from .resolver import resolve_best_location
+    from .resolver import prune_mentions_to_resolved, resolve_best_location
 
     resolved = resolve_best_location(gazetteer_mentions)
+    pruned_mentions = prune_mentions_to_resolved(gazetteer_mentions, resolved)
 
     out: dict[str, object] = {
         "text": text,
-        "gazetteer_mentions": gazetteer_mentions,
+        "gazetteer_mentions": pruned_mentions,
         "final_result": resolved.to_dict() if resolved else None,
     }
 
